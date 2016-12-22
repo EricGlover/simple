@@ -1,0 +1,46 @@
+Syntax Rules for Simple
+-currently
+all programs must end with the end command at the bottom 
+
+REM
+rem <anything>
+	used to comment code, anything after the rem is ignored
+	may have to be on a separate line, don’t quite know 
+
+PRINT
+print <var or constant>
+	print out var to the screen
+
+INPUT
+input <var>
+	assign variable to user input value  
+
+IF . . . GOTO 
+if <var or constant> <equality operator> <var or constant> goto <line number>
+	equality operators : == >= <= != > < 
+	if condition is true branch to line number
+
+GOTO 
+goto <line number>
+	branches program to line number
+
+LET 
+let <variables> = <expression>
+	assigns all vars to the result of the expression 
+
+END 
+end
+	terminates program 
+
+data types:
+	only ints allowed 
+variable declarations:
+	only single letter variables allowed 
+expressions :
+	must have spaces
+	ex: this is allowed
+	let x = ( 1 + 1 ) * 3
+	ex: this is not allowed
+	let x = (1+1) * 3
+	ex: this is also not allowed 
+	let x = (1 + 1) * 3
