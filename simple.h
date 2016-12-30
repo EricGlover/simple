@@ -25,5 +25,38 @@ int searchTable(TableEntry table[], char *token, char type);
 TableEntry* getTable(void);
 FILE* getOutput(void);
 
+void toString(int num, char *string);
+
 int instructionCounter, dataCounter;
 //int flags[MEMSIZE];
+
+/*    PRIMER ON USING searchTable
+printf("searchTable(table, '123', 'C') returns %d\n", searchTable(table, "123", 'C'));  //-1
+table[0].symbol = 1;
+table[0].location = 11;
+table[0].type = 'C';
+
+table[1].symbol = atoi("11");
+table[1].location = 10;
+table[1].type = 'L';
+
+table[99].symbol = 'x';
+table[99].location = 9;
+table[99].type = 'V';
+
+table[98].symbol = atoi("1");
+table[98].location = 8;
+table[98].type = 'C';
+
+
+printf("searchTable(table, '1', 'L') returns %d\n", searchTable(table, "1", 'L'));    //0
+printf("searchTable(table, '11', 'L') returns %d\n", searchTable(table, "11", 'L'));  //1
+printf("searchTable(table, 'x', 'V') returns %d\n", searchTable(table, "x", 'V'));    //99
+printf("searchTable(table, '1', 'C') returns %d\n", searchTable(table, "1", 'C'));    //98
+printf("first empty index = %d\n", searchTable(table,"first", 'u') );
+printf("last empty index = %d\n", searchTable(table,"last", 'u') );
+
+printTable(table);
+puts("Thus ends the searchTable Test");
+
+*/

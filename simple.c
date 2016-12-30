@@ -8,11 +8,12 @@
     //secondPass() seems functional
     //simpletron seems functional
     //currently working on ex 12.28 optimization of code, seems operational
-    //working on ex 12.29
+    //working on ex 12.29, subroutines
 
 //TO-DO :
 //consider changing the filename of the sml instructions to [whatever the input file name was sans .simple.txt].sml.txt
-//ex 12.29, modifications : syntax and error checking
+//ex 12.29, modifications : syntax and error checking, subroutines
+  //subroutines, modifying searchTable to allow for type 'R'
 
 //simple language, a complex explanation
 /*
@@ -149,10 +150,46 @@ example g)
 9   9   print t
 10  10  end
 */
+/*
+subroutines
+	10 gosub <letter>	(calling a sub routine)
+	90 sub a		(subroutine definition)
+		let x = y + 1
+	 	print x
+		return
+	95 end
+no unique namespaces, no line #’s in subroutines due to worries over branching into subroutines (what’s it do when it hits a return command) (how to keep these lines in a protected space?), 10 branch line(suba), line 90 compile code for subroutine pretty much like normal here,
+return…how the fuck should this work?
+does the subroutine code need to be placed every time the name appears ?
+maybe the return is just a series of possible branches to all the locations after gosuba is called ???
+maybe you can actually change operands on the fly?
+gosuba
+store your line number into var A*
+	load A*
+	0 out A*
+	set command code to branch
+	add your line number
+	store in A*
+actually it’s
+	load constant 0
+	add constant command code thats needed here
+	add your line number(well your memory address) (how do?) (stored in a constant)
+	store in A*
+	branch to line sub a
+		code for sub a executes
+		return code = A*
+	when you encounter A* flag it with a sentineL? or different array of flags ?
+	in secondPass sort out the A* flags first then do the rest of the line numbers , it’s treated as a line number that is a variable? or just a variable, that happens to represent a line number
+
+
+how to link subA with it’s line # for the secondPass()?
+*/
+
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "simpletron.h"
 #include "ex12.h"
 
@@ -172,8 +209,8 @@ example g)
 
 struct tableEntry {
   int symbol;
-  char type; // 'C', 'L' or 'V' : constant or line number or variable
-  int location; // 00 to 99 (to 999 I beleive actually)
+  char type; // 'C', 'L', 'V', 'u', 'R' : constant or line number or variable or unnassigned or routine (function line number)
+  int location; // 00 to 999
 };
 
 //do the nickname thing
@@ -191,14 +228,16 @@ void optimize(char *outFile, TableEntry *table);
 
 //table functions
 void printTable(TableEntry table[]);
-//int searchTable(TableEntry table[]);    //return index of entry or -1
-int searchTable(TableEntry table[], char *token, char type);
+//return index of entry or -1
+int searchTable(TableEntry table[], char *token, char type);  //searchTable(table, "last", 'u') gives index of first unnassigned var symbol index
 TableEntry* getTable(void);
 FILE* getOutput(void);
+void toString(int num, char *string);
 
 
 int instructionCounter, dataCounter;
 int flags[MEMSIZE];
+int subFlags[MEMSIZE];
 
 
 
@@ -222,38 +261,6 @@ int main(int argc, char *argv[]){
   }
   tablePtr = table;
   //alternate style of doing things .... StackNodePtr newPtr = malloc(sizeof(StackNode));
-
-  /*    PRIMER ON USING searchTable
-  printf("searchTable(table, '123', 'C') returns %d\n", searchTable(table, "123", 'C'));  //-1
-  table[0].symbol = 1;
-  table[0].location = 11;
-  table[0].type = 'C';
-
-  table[1].symbol = atoi("11");
-  table[1].location = 10;
-  table[1].type = 'L';
-
-  table[99].symbol = 'x';
-  table[99].location = 9;
-  table[99].type = 'V';
-
-  table[98].symbol = atoi("1");
-  table[98].location = 8;
-  table[98].type = 'C';
-
-
-  printf("searchTable(table, '1', 'L') returns %d\n", searchTable(table, "1", 'L'));    //0
-  printf("searchTable(table, '11', 'L') returns %d\n", searchTable(table, "11", 'L'));  //1
-  printf("searchTable(table, 'x', 'V') returns %d\n", searchTable(table, "x", 'V'));    //99
-  printf("searchTable(table, '1', 'C') returns %d\n", searchTable(table, "1", 'C'));    //98
-  printf("first empty index = %d\n", searchTable(table,"first", 'u') );
-  printf("last empty index = %d\n", searchTable(table,"last", 'u') );
-
-  printTable(table);
-  puts("Thus ends the searchTable Test");
-
-  */
-
 
   //int instructionCounter, dataCounter;
   instructionCounter = 0;
@@ -333,13 +340,15 @@ void firstPass(FILE *filePtr, TableEntry *table, FILE *output){
   char line[500];
   int i, z, cNum, operand, operationCode, instruction, lineNum = 0; //sml instruction = operationCode[2 digits] + operand[3 digits]
   int needFlag = 0;
-  char *command[] = {"rem", "input", "let", "print", "goto", "if", "end"};
+  char *command[] = {"rem", "input", "let", "print", "goto", "if", "end", "gosub", "sub", "return"};
   char *eqOp[] = {"<", ">", "<=", ">=", "==", "!="};   //allowed operators (<, >, <=, >=, ==, !=)
-  int command_length = 7; //# of commands allowed in the language
+  int command_length = 9; //# of commands allowed in the language
   //let
   char var[10] = {0};  //list of vars to be assigned
   int varMem[10] = {-1}; //list of corresponding locations of vars , keep size same as var
   int tempM = 0;
+  //print
+  char type = 0;
   //char infix[100];
   char *infix = malloc(sizeof(char) * 500);
   char *postfix;
@@ -349,6 +358,9 @@ void firstPass(FILE *filePtr, TableEntry *table, FILE *output){
   //char op2[10];
   int op1, op2, branchLine = -1;
   //char branchLine[10];
+
+  //gosub
+  char string[100];
 
   i = 0;
   //read the file line by line , i guess that's an fgets thing ......
@@ -393,7 +405,7 @@ void firstPass(FILE *filePtr, TableEntry *table, FILE *output){
         while(cNum < command_length && (strcmp(token, command[cNum])) ){    //fails when a command is found at index cNum
           cNum++;
         }
-        /*this works too
+        /*this works too, actually, no I don't believe it does
         while(cNum < 6 ? strcmp(token, command[cNum]) : 0 ){
           cNum++;
         }
@@ -409,7 +421,7 @@ void firstPass(FILE *filePtr, TableEntry *table, FILE *output){
           case 0 :
             //REM,  ignore everything after rem in this line
             //don't move instructionCounter, all sequential rem lines refer to the same line of sml code (the next actual instruction)
-            while( (token = strtok( NULL, d) != NULL)){
+            while( (token = strtok( NULL, d)) != NULL ){
               //cycle through the rest of the tokens until the end of the line
             }
             break;
@@ -420,26 +432,26 @@ void firstPass(FILE *filePtr, TableEntry *table, FILE *output){
             //if not found
             puts("input is running");
             operationCode = READ;
-
             //find var, should be next token ---consider error checking this
-            token = strtok(NULL, d);
-            //change this later to allow for multiple variable assignment
-            z = searchTable(table, token, 'V');
-            if ( z == -1){    //symbol not found
-              operand = dataCounter--;
-              z = searchTable(table, "last", 'u');    //find last empty index
-              table[z].symbol = *token;               //token is char
-              table[z].type = 'V';                    // 'V' for variable
-              table[z].location = operand;
-            }else {                                   //symbol was found
-              operand = table[z].location;
+            for( size_t i = 0; (token = strtok(NULL, d)) != NULL; i++){     //search through line for vars, do the same code for each one you see
+                z = searchTable(table, token, 'V');
+                if ( z == - 1){    //symbol not found
+                  operand = dataCounter--;
+                  z = searchTable(table, "last", 'u');    //find last empty index
+                  table[z].symbol = *token;               //token is char
+                  table[z].type = 'V';                    // 'V' for variable
+                  table[z].location = operand;
+                }else {                                   //symbol was found
+                  operand = table[z].location;
+                }
+                //write this sml instruction to file and increment the instructionCounter
+                //convert operationCode + operand into one #
+                instruction = MEMSIZE * operationCode;
+                instruction += operand;
+                fprintf(output, "%d\n", instruction);
+                instructionCounter++;
             }
-            //write this sml instruction to file and increment the instructionCounter
-            //convert operationCode + operand into one #
-            instruction = MEMSIZE * operationCode;
-            instruction += operand;
-            fprintf(output, "%d\n", instruction);
-            instructionCounter++;
+
             break;
           case 2 :
             // LET
@@ -465,6 +477,7 @@ void firstPass(FILE *filePtr, TableEntry *table, FILE *output){
             //for( size_t i = 0; (token = strtok(NULL, d)) != "="; i++){
             //for( size_t i = 0; (token = strtok(NULL, d)) != "="; i++){
             for( size_t i = 0; strcmp((token = strtok(NULL, d)), "="); i++){     //search through line for vars, stop when token = "=" //non-zero is true
+                //*token = tolower(*token);  //convert to lowercase
                 var[i] = *token; //questionable string char problems
                 //unoptimized search here
                 z = searchTable(table, token, 'V');
@@ -485,6 +498,7 @@ void firstPass(FILE *filePtr, TableEntry *table, FILE *output){
             //printf("before the while loop infix is %s\n", infix);
             //make sure everything on the right hand side is in the symbol table && put the expression into infix
             while ( (token = strtok(NULL, d)) != NULL ){
+              //*token = tolower(*token);  //convert to lowercase
               strcat(infix, token);
               strcat(infix, " ");
               //is token var or constant ?
@@ -567,23 +581,28 @@ void firstPass(FILE *filePtr, TableEntry *table, FILE *output){
             //if symbol is found or if it's not found the sml instruction is the same (address may be different obvi)
             operationCode = WRITE;
             //find var, should be next token ---consider error checking this
-            token = strtok(NULL, d);
-            z = searchTable(table, token, 'V');
-            if ( z == -1){    //symbol not found
-              operand = dataCounter--;
-              z = searchTable(table, "last", 'u');    //find last empty index
-              table[z].symbol = *token;               //token is char
-              table[z].type = 'V';                    // 'V' for variable
-              table[z].location = operand;
-            }else {                                   //symbol was found
-              operand = table[z].location;
+            for( size_t i = 0; (token = strtok(NULL, d)) != NULL; i++){
+              //token = strtok(NULL, d);
+              type = atoi(token) ? 'C' : 'V';  //allow for printing constants cause why not
+              printf("token being printed is %s, type is thought to be %c, requires further investigation\n", token, type);
+              z = searchTable(table, token, type);
+              if ( z == -1){    //symbol not found
+                operand = dataCounter--;
+                z = searchTable(table, "last", 'u');    //find last empty index
+                table[z].symbol = *token;               //token is char
+                table[z].symbol = atoi(token) ? atoi(token) : *token;         //if token is int, or if token is char
+                table[z].type = type;                    // 'V' for variable                table[z].location = operand;
+                table[z].location = operand;
+              }else {                                   //symbol was foud
+                operand = table[z].location;
+              }
+              //write this sml instruction to file and increment the instructionCounter
+              //convert operationCode + operand into one #
+              instruction = MEMSIZE * operationCode;
+              instruction += operand;
+              fprintf(output, "%d\n", instruction);
+              instructionCounter++;
             }
-            //write this sml instruction to file and increment the instructionCounter
-            //convert operationCode + operand into one #
-            instruction = MEMSIZE * operationCode;
-            instruction += operand;
-            fprintf(output, "%d\n", instruction);
-            instructionCounter++;
             break;
           case 4 :
             //GOTO
@@ -935,6 +954,150 @@ void firstPass(FILE *filePtr, TableEntry *table, FILE *output){
             fprintf(output, "%d\n", instruction);
             instructionCounter++;
             break;
+          case 7 :
+            //GOSUB
+            //10 gosub <letter>
+            //tok over to the letter
+            token = strtok(NULL, d);
+            //first set up A*, A* is used to store the correct branch instruction that will later be used in return
+            //    ie 10 gosub a : A* would be branch 11
+              //Instrunction 1: load 40000; 2 : add instructionCounter + 3; 3 : store in A*
+            //load 40000 + instructionCounter + 3
+            // = 40000 + instructionCounter + 3;   //check the three later
+
+            //transform int into string
+            printf("in gosub\n");
+            printf("instructionCounter = %d\n", instructionCounter);
+            toString((40000+instructionCounter+2), string);
+            puts("ran toString");
+            printf("string is : %s\n", string);
+            z = searchTable(table, string, 'C');
+            puts("ran searchTable");
+            if (z == -1 ){
+              z = searchTable(table, string, 'C');
+              table[z].symbol = atoi(string);
+              table[z].type = 'C';
+              table[z].location = dataCounter;
+              dataCounter--;
+            }else{
+
+            }
+            operationCode = 20;     //LOAD = 21
+            instruction = MEMSIZE * operationCode;
+            operand = table[z].location;
+            instruction += operand;
+            fprintf(output, "%d\n", instruction);
+            instructionCounter++;
+            puts("ran first instruction");
+            /*
+            //add instructionCounter + 3
+            operationCode = 30;     //ADD = 30
+            instruction = MEMSIZE * operationCode;
+            operand +=
+            */
+
+            //Store this instruction in A*
+            z = searchTable(table, "a", 'R');
+            puts("ran searchTable");
+            if (z == - 1){
+              z = searchTable(table, "last", 'u');
+              table[z].symbol = 'a';
+              table[z].location = dataCounter;
+              table[z].type = 'R';
+              dataCounter--;
+              operand = table[z].location;
+            }else {
+              operand = table[z].location;
+            }
+            operationCode = 21;     //STORE = 21
+            instruction = MEMSIZE * operationCode;
+            instruction += operand;
+            fprintf(output, "%d\n", instruction);
+            instructionCounter++;
+            puts("ran second instruction");
+
+            //second setup the branch statement that sends simpletron execution over to where the function's instructioncode is
+                //<letter> will be stored in table under the type 'R'
+            //Instruction 1: branch to <letter> 'F''s location
+            z = searchTable(table, token, 'F');
+            if (z == -1){
+              /*z = searchTable(table, "first", 'u');
+              table[z].symbol = *token;
+              //table[z].location = UNKNON;
+              table[z].*/
+              //subFlag it
+              subFlags[instructionCounter] = *token;
+              operand = 0;
+            }else{
+              operand = table[z].location;
+            }
+            operationCode = 40;     //BRANCH = 40
+            instruction = MEMSIZE * operationCode;
+            instruction += operand;
+            fprintf(output, "%d\n", instruction);
+            instructionCounter++;
+            puts("exiting gosub");
+
+            break;
+          case 8 :
+            //SUB
+            //90 sub a		(subroutine definition)
+		          //91 let x = y + 1
+	 	           //92 print x
+		           //93 return
+            // 90 and a are both line #'s
+            //run the next lines through the firstPass like normal,consider using a sub sentinel if you don't want consequctive line numbers to be required in here
+            //sub = 1;
+            token = strtok(NULL, d);
+            //put a into symbol table     //as in now, set the memory address to be a load operation of this instruction #, similar to how constants are set
+
+            z = searchTable(table, token, 'F');
+            if (z == - 1){  //function not in symbol key
+                //z = searchTable(table, "last", 'u');
+                z = searchTable(table, "first", 'u');
+                table[z].location = instructionCounter;
+                table[z].symbol = *token;
+                table[z].type = 'F';
+            }else {         //function in symbol key
+              //do nothing
+            }
+
+            break;
+          case 9 :
+            //RETURN
+            //turn off sub sentinel
+            //sub = 0;
+
+            //load a*
+            z = searchTable(table, "a", 'R');
+            if (z == -1){
+              //error, a* must be in the symbol table by now
+              puts("error in subroutine, couldn't find the line that called me");
+              puts("perhaps a subroutine was written but not used in this simple file, unfortunately such behavior isn't allowed currently");
+            }else{
+              operand = table[z].location;
+            }
+            operationCode = 20;     //LOAD = 20
+            instruction = MEMSIZE * operationCode;
+            instruction += operand;
+            fprintf(output, "%d\n", instruction);
+            instructionCounter++;
+
+            //store a* in the next instruction
+            operationCode = 21;     //STORE = 21
+            instruction = MEMSIZE * operationCode;
+            instruction += instructionCounter + 1;
+            fprintf(output, "%d\n", instruction);
+            instructionCounter++;
+
+            //blank branch instruction that will be overwritten at runtime
+            operationCode = 40;     //BRANCH = 40
+            instruction = MEMSIZE * operationCode;
+            instruction += 0;
+            fprintf(output, "%d\n", instruction);
+            instructionCounter++;
+
+            break;
           default :
             puts("Error in cNum switch");
         }
@@ -976,8 +1139,10 @@ int searchTable(TableEntry table[], char *token, char type){
       }
       return -1;        //couldn't find it
     case 'V':
+      //allow for upperCase and lowerCase letters
+      *token = toupper(*token);
       for ( z = TABLESIZE - 1; z >= 0; z-- ){
-        if (table[z].symbol == *token && table[z].type == 'V'){
+        if ( ( (table[z].symbol == *token) || (table[z].symbol == tolower(*token)) ) && table[z].type == 'V'){    //if z.symbol matches upper or lower) and is type v
           return z;
         }else if (table[z].type == 'u'){    //unassigned you've searched too far
           return -1;
@@ -1016,6 +1181,34 @@ int searchTable(TableEntry table[], char *token, char type){
         return -1;    //huston we have a problem
       }
       //if not return by now then print default error ?
+    case 'R':
+      //allow for upperCase and lowerCase letters
+      *token = toupper(*token);
+      for ( z = TABLESIZE - 1; z >= 0; z-- ){
+        if ( ( (table[z].symbol == *token) || (table[z].symbol == tolower(*token)) ) && table[z].type == 'R'){    //if z.symbol matches upper or lower) and is type R
+          return z;
+        }else if (table[z].type == 'u'){    //unassigned you've searched too far
+          return -1;
+        }else{
+          //keep looking
+        }
+      }
+      return -1;        //couldn't find it
+      break;
+    case 'F':
+      //allow for upperCase and lowerCase letters
+      *token = toupper(*token);
+      for ( z = TABLESIZE - 1; z >= 0; z-- ){
+        if ( ( (table[z].symbol == *token) || (table[z].symbol == tolower(*token)) ) && table[z].type == 'F'){    //if z.symbol matches upper or lower) and is type R
+          return z;
+        }else if (table[z].type == 'u'){    //unassigned you've searched too far
+          return -1;
+        }else{
+          //keep looking
+        }
+      }
+      return -1;        //couldn't find it
+      break;
     default :
       printf("Error searching the table for type %c\n", type);
 
@@ -1023,7 +1216,7 @@ int searchTable(TableEntry table[], char *token, char type){
   return -1;
 }
 
-//incomplete
+
 void secondPass(FILE *filePtr, TableEntry *table, FILE *output, char *outName){
   //go through flags && link things
   int x, z, index, operand;
@@ -1031,11 +1224,14 @@ void secondPass(FILE *filePtr, TableEntry *table, FILE *output, char *outName){
   //char temp[10];
   //int c[10] = {0};
   int c = 0;
+  char type = 'u';
   FILE *temp;
   for(size_t i = 0; i < MEMSIZE; i++){
       if(flags[i] != -1){
         //found flag[i] with line# of incomplete line
         //switch flag[i] the int to a string
+        //set type
+        //type
         printf("found flag at index %zu, flags[%zu] = %d\n", i, i, flags[i]);
         for ( z = 0; z < TABLESIZE; z++ ){                                      //search the table manually for the line number
           if (table[z].symbol == flags[i] && table[z].type == 'L'){
@@ -1103,7 +1299,7 @@ void secondPass(FILE *filePtr, TableEntry *table, FILE *output, char *outName){
             fscanf(temp, "%d\n", &c);
             printf("c is now %d\n", c);
             while(!feof(temp)){
-              printf(" second pass sees i as %d, and x as %d\n", i, x);
+              printf(" second pass sees i as %zu, and x as %d\n", i, x);
               if ( i == x ){        //change value
                 operand = table[z].location;
                 c += operand;
@@ -1129,6 +1325,79 @@ void secondPass(FILE *filePtr, TableEntry *table, FILE *output, char *outName){
         }
       }
   }
+  for(size_t i = 0; i < MEMSIZE; i++){          //do the same thing for the subFlags array
+      if(subFlags[i] != -1){
+        //search the table manually for the line number
+        for ( z = 0; z < TABLESIZE; z++ ){
+          if (table[z].symbol == subFlags[i] && table[z].type == 'F'){
+            //index of line # found at z
+            break;
+          }else if (table[z].type == 'u'){    //unassigned you've searched too far
+            z = -1;
+          }else{
+            //keep looking
+          }
+        }
+        //
+        if (z != -1){       //change instruction to have the correct memory address
+            //reset file pointer
+            rewind(output);
+
+            //read all the current contents into a temp file
+            if ( (temp = fopen("temp.txt", "w")) == NULL) {
+              puts("error in making temp file");
+            }
+            instructionCounter--; //undo last increment
+
+            //create a clone of output in temp
+            fscanf(output, "%d\n", &c);
+            printf("c is now %d\n", c);
+            while(!feof(output)){
+              fprintf(temp, "%d\n", c);
+              printf("c is now %d\n", c);
+              fscanf(output, "%d\n", &c);
+            }
+            fprintf(temp, "%d\n", c);
+            printf("c is now %d\n", c);
+
+            //setup temp for write priveledges
+            fclose(temp);
+            if ( (temp = fopen("temp.txt", "r+")) == NULL) {
+              puts("error in making temp file");
+            }
+
+            //close out ouput and open a new one
+            fclose(output);
+            if ( (output = fopen( outName, "w")) == NULL) {
+              puts("error in rewriting the output file");
+            }
+
+            //read the temp file into the old file while making the update
+            // z is symbol table index , x is line indicator / instruction indicator, i is instruction number of the flagged machine code
+            x = 0;
+            fscanf(temp, "%d\n", &c);
+            printf("c is now %d\n", c);
+            while(!feof(temp)){
+              printf(" second pass sees i as %zu, and x as %d\n", i, x);
+              if ( i == x ){        //change value
+                operand = table[z].location;
+                c += operand;
+              }
+              fprintf(output, "%d\n", c);
+              printf("c is now %d\n", c);
+              fscanf(temp, "%d\n", &c);
+              x++;
+            }
+            fprintf(output, "%d\n", c);
+            printf("c is now %d\n", c);
+            fprintf(output, "%d\n", -999999);   //this is simpletrons EOF signal value
+            //delete the temp file
+            fclose(temp);
+        }else{
+          //there was an error
+        }
+      }
+  }
 }
 
 TableEntry* getTable(void){
@@ -1143,6 +1412,7 @@ FILE* getOutput(void){
 void setConstants(void){
   int z;
   z = 0;
+  printTable(tablePtr);
   for (z = TABLESIZE - 1; z >= 0; z-- ){
     if (tablePtr[z].type == 'C'){
       printf("memory[table[z].location] is %d\n", memory[tablePtr[z].location]);
@@ -1252,4 +1522,22 @@ void optimize(char *outFile, TableEntry *table){
   fclose(output);
   fclose(temp);
 
+}
+
+void toString(int num, char *string){
+  int i, rem, len, n;
+  //char *string[100];
+  n = num;
+  len = 0;
+  while(n != 0){
+    len++;
+    n /= 10;
+  }
+  for(i = 0; i < len; i++){
+    rem = num %10;
+    num /= 10;
+    string[len - (i + 1)] = rem + '0';
+  }
+  string[len] = '\0';
+  //return string;
 }

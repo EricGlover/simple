@@ -8,12 +8,14 @@ rem <anything>
 	may have to be on a separate line, don’t quite know 
 
 PRINT
-print <var or constant>
-	print out var to the screen
+print <vars or constants>
+	print out vars or constants to the screen
 
 INPUT
-input <var>
-	assign variable to user input value  
+input <vars>
+	assign variables to user input values
+	ex: 10 input x y z
+	will prompt the user for 3 separate inputs going into x then y then z  
 
 IF . . . GOTO 
 if <var or constant> <equality operator> <var or constant> goto <line number>
@@ -35,12 +37,55 @@ end
 data types:
 	only ints allowed 
 variable declarations:
-	only single letter variables allowed 
+	only single letter variables allowed, it is not case-sensitive so C is the same as c 
 expressions :
 	must have spaces
+	allowed operators : % ^ * / + - (same ones as in C)
 	ex: this is allowed
 	let x = ( 1 + 1 ) * 3
 	ex: this is not allowed
 	let x = (1+1) * 3
 	ex: this is also not allowed 
 	let x = (1 + 1) * 3
+
+Currently working on:
+int arrays data type
+subroutines
+	10 gosub <letter>	(calling a sub routine)
+	90 sub a		(subroutine definition)
+		let x = y + 1
+	 	print x
+		return
+	95 end 
+no unique namespaces, no line #’s in subroutines due to worries over branching into subroutines (what’s it do when it hits a return command) (how to keep these lines in a protected space?), 10 branch line(suba), line 90 compile code for subroutine pretty much like normal here,
+return…how the fuck should this work?
+does the subroutine code need to be placed every time the name appears ?
+maybe the return is just a series of possible branches to all the locations after gosuba is called ???
+maybe you can actually change operands on the fly?
+gosuba 
+store your line number into var A*
+	load A*
+	0 out A*
+	set command code to branch
+	add your line number
+	store in A*
+actually it’s 
+	load constant 0
+	add constant command code thats needed here
+	add your line number(well your memory address) (how do?) (stored in a constant)
+	store in A*
+	branch to line sub a
+		code for sub a executes 
+		return code = A*
+	when you encounter A* flag it with a sentineL? or different array of flags ?
+	in secondPass sort out the A* flags first then do the rest of the line numbers , it’s treated as a line number that is a variable? or just a variable, that happens to represent a line number 
+
+
+how to link subA with it’s line # for the secondPass()?
+/usr/bin:/bin:/usr/sbin:/sbin
+		
+for loops
+string data type
+float data type
+—later
+syntax checking 

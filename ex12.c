@@ -9,31 +9,10 @@
 //this : 6 2 + 5 * 8 4 / -
 
 //STATUS : 12.12 the infix to postix converter & 12.13 (the postfix evaluator)  & 12.14 (allowing ints > 9, single letter variables) are OPERATIONAL
-         //:Currently reworking this to fit into my simple compiler
-//TO-DO : figure who's declaring the variables and how when this gets put in the compiler
+         //fully integrated into the compiler now
+//TO-DO :
           //FIX the currently only known bug, see below
-
-          //(from book) Also, the algorithm should now implement the previously dis- cussed “hook”
-          //so that SML instructions are produced rather than directly evaluating the expression.
-          //[Hint: Standard library function strtok can be used to locate each constant and variable in an expression,
-          // and constants can be converted from strings to integers using standard library function atoi.]
-
-/*        HOOK MODIFICATIONS
-How is it that the compiler produces the machine language to evaluate an expression con- taining variables?
-The postfix evaluation algorithm contains a “hook” that allows our compiler to generate SML instructions rather
-than actually evaluating the expression. To enable this “hook” in the compiler,
-the postfix evaluation algorithm must be modified to search the symbol table for each symbol it encounters
-(and possibly insert it), determine the symbol’s corresponding memory loca- tion, and push the memory location
-on the stack instead of the symbol. When an operator is encoun- tered in the postfix expression,
-the two memory locations at the top of the stack are popped and machine language for effecting the
-operation is produced using the memory locations as operands. The result of each subexpression is stored in
-a temporary location in memory and pushed back onto the stack so the evaluation of
-the postfix expression can continue. When postfix evaluation is complete, the memory location
-containing the result is the only location left on the stack. This is popped and SML instructions
-are generated to assign the result to the variable at the left of the let statement.
-
-*/
-
+          //do the machine code only version of the %  & * operators that don't rely on code Mod and code Exponent
 
 
 //read expression into char array infix and use algorithm to create postfix stored in char array postfix
@@ -80,6 +59,7 @@ everything's working in precedence, the problem seems to be when you hit then en
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "ex12.h"
 #include "simple.h"
 #include "simpletron.h"
@@ -283,7 +263,7 @@ int evaluatePostfixExpression(char *expr){
           x = table[x].location;
           pushNum(&stackPtr, x);    //pushh mem address onto stack
         }
-      }else if( *token <= 122 && *token >= 97 ){    //is var
+      }else if( tolower(*token) <= 122 && tolower(*token) >= 97 ){    //is var, allow for upperCase and lowerCase
         x = searchTable(table, token, 'V');
         if ( x == -1 ){
           //error var not found
@@ -298,6 +278,8 @@ int evaluatePostfixExpression(char *expr){
         y = popNum(&stackPtr);
         pushNum(&stackPtr, calculate(x , y, *token) );
         //do something
+      }else{
+        puts("Error in evaluating the postfix expression\n");
       }
     } while( (token = strtok( NULL, " ")) != NULL );
   }
@@ -602,6 +584,7 @@ int calculate(int op1, int op2, char operator){
   FILE *output = getOutput();
   int operationCode, operand, instruction = 0;
   int x = 0;
+  printf("operator = %c\n", operator);
 
     switch (operator) {
     case '+' :
@@ -737,6 +720,7 @@ int calculate(int op1, int op2, char operator){
     case '%' :
       //how the fuck do I do this in machine code ????lol
       //return op2 % op1;
+      /*the actual hard way, try this later
       //load op2
       operationCode = 20;     //LOAD = 20
       instruction = MEMSIZE * operationCode;
@@ -771,7 +755,7 @@ int calculate(int op1, int op2, char operator){
       fprintf(output, "%d\n", instruction);
       instructionCounter++;
 
-      //load op2 
+      //load op2
       operationCode = 20;     //LOAD = 20
       instruction = MEMSIZE * operationCode;
       instruction += op2;
@@ -797,10 +781,74 @@ int calculate(int op1, int op2, char operator){
       instruction += operand;
       fprintf(output, "%d\n", instruction);
       instructionCounter++;
+      */
+
+      /*the easy way, use the simpletron command to cheat */
+      //returns op2 operator op1
+      //load op2
+      operationCode = 20;     //LOAD = 20
+      instruction = MEMSIZE * operationCode;
+      instruction += op2;
+      fprintf(output, "%d\n", instruction);
+      instructionCounter++;
+
+      //modulo op1
+      operationCode = 34;     //MODULO = 34
+      instruction = MEMSIZE * operationCode;
+      instruction += op1;
+      fprintf(output, "%d\n", instruction);
+      instructionCounter++;
+
+      //store in temp location
+      x = searchTable(table, "last", 'u');
+      table[x].location = dataCounter;
+      table[x].type = 't';
+      operand = dataCounter;
+      printf("operand = %d\n", operand);
+      dataCounter--;
+
+      operationCode = 21;     //STORE = 21
+      instruction = MEMSIZE * operationCode;
+      instruction += operand;
+      printf("instruction = %d\n", instruction);
+      fprintf(output, "%d\n", instruction);
+      instructionCounter++;
+
+      return operand;
 
     case '^' :
       //how the fuck do I do this in machine code ????lol
       //return power(op2, op1);
+
+      //load op2
+      operationCode = 20;     //LOAD = 20
+      instruction = MEMSIZE * operationCode;
+      instruction += op2;
+      fprintf(output, "%d\n", instruction);
+      instructionCounter++;
+
+      //exponent op1
+      operationCode = 35;     //EXPONENT = 35
+      instruction = MEMSIZE * operationCode;
+      instruction += op1;
+      fprintf(output, "%d\n", instruction);
+      instructionCounter++;
+
+      //store in temp location
+      x = searchTable(table, "last", 'u');
+      table[x].location = dataCounter;
+      table[x].type = 't';
+      operand = dataCounter;
+      dataCounter--;
+
+      operationCode = 21;     //STORE = 21
+      instruction = MEMSIZE * operationCode;
+      instruction += operand;
+      fprintf(output, "%d\n", instruction);
+      instructionCounter++;
+
+      return operand;
+
     default :
       printf("%c was sent to calculate, could not evaluate the expression : %d %c %d", operator, op2, operator, op1);
       return 0;

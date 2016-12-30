@@ -385,6 +385,7 @@ void execution(int *accumulator, int *instructionCounter, int *instructionRegist
             *accumulator *= initValue;
           }
         }
+        //simpler to do power()..consider changing this 
         break;
       case BRANCH:
         puts("branching");
