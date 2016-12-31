@@ -1,0 +1,12 @@
+1 rem modulus test
+5 input a
+6 input b
+10 let c = a / b
+12 let r = a - c * b
+15 print a
+16 print b
+17 print r
+18 print c
+19 let t = a % b
+20 print t
+50 end 

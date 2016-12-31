@@ -1,0 +1,8 @@
+1 print a
+10 gosub a
+20 sub a
+21 let a = 1
+22 print a
+23 return
+25 print a
+30 end

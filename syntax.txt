@@ -55,7 +55,7 @@ subroutines
 	90 sub a		(subroutine definition)
 		let x = y + 1
 	 	print x
-		return
+		return	
 	95 end 
 no unique namespaces, no line #’s in subroutines due to worries over branching into subroutines (what’s it do when it hits a return command) (how to keep these lines in a protected space?), 10 branch line(suba), line 90 compile code for subroutine pretty much like normal here,
 return…how the fuck should this work?

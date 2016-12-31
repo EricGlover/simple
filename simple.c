@@ -271,6 +271,7 @@ int main(int argc, char *argv[]){
   //int flags[MEMSIZE] = {-1}; // this is declared in global namespace already
   for(size_t q = 0; q < MEMSIZE; q++){
     flags[q] = -1;
+    subFlags[q] = -1;
   }
 
   //read txt file formatted in simple and use it as the program
@@ -291,13 +292,14 @@ int main(int argc, char *argv[]){
   output = outPtr;
 
   firstPass(filePtr, table, outPtr);
+  puts("just got out of firstPass");
   /*fclose(outPtr);
   if( (outPtr = fopen(argv[2], "rb+")) == NULL){
     printf("Couldn't write to %s\n", argv[2]);
     return 0;
   }*/
   fclose(outPtr);
-
+  puts("closed output");
   if(argc > 3){   //if given an option
     if (! strcmp(argv[3], "o") ){
       puts("running optimize");
@@ -309,7 +311,7 @@ int main(int argc, char *argv[]){
     printf("Counldn't write to %s\n", argv[2]);
     return 0;
   }
-
+  puts("calling secondPass now");
   secondPass(filePtr, table, outPtr, argv[2]);
   fclose(filePtr);
   fclose(outPtr);
@@ -546,7 +548,7 @@ void firstPass(FILE *filePtr, TableEntry *table, FILE *output){
               //convert to postfix
               //convertToPostfix(infix, postfix);
 
-              printf("infix is now %s\nThe converted postfix of this is : %s\n", infix, postfix);
+              //printf("infix is now %s\nThe converted postfix of this is : %s\n", infix, postfix);
               //evaluate postfix kinda
               //evaluatePostfixExpression(postfix)
             //create appropriate code
@@ -1183,7 +1185,7 @@ int searchTable(TableEntry table[], char *token, char type){
       //if not return by now then print default error ?
     case 'R':
       //allow for upperCase and lowerCase letters
-      *token = toupper(*token);
+      //*token = toupper(*token);     //this line was causing a bus error 10, weird huh
       for ( z = TABLESIZE - 1; z >= 0; z-- ){
         if ( ( (table[z].symbol == *token) || (table[z].symbol == tolower(*token)) ) && table[z].type == 'R'){    //if z.symbol matches upper or lower) and is type R
           return z;
@@ -1224,14 +1226,11 @@ void secondPass(FILE *filePtr, TableEntry *table, FILE *output, char *outName){
   //char temp[10];
   //int c[10] = {0};
   int c = 0;
-  char type = 'u';
   FILE *temp;
   for(size_t i = 0; i < MEMSIZE; i++){
       if(flags[i] != -1){
         //found flag[i] with line# of incomplete line
         //switch flag[i] the int to a string
-        //set type
-        //type
         printf("found flag at index %zu, flags[%zu] = %d\n", i, i, flags[i]);
         for ( z = 0; z < TABLESIZE; z++ ){                                      //search the table manually for the line number
           if (table[z].symbol == flags[i] && table[z].type == 'L'){
@@ -1326,6 +1325,7 @@ void secondPass(FILE *filePtr, TableEntry *table, FILE *output, char *outName){
       }
   }
   for(size_t i = 0; i < MEMSIZE; i++){          //do the same thing for the subFlags array
+      //printf("subflag loop of secondpass is on the %zuth pass\n", i);
       if(subFlags[i] != -1){
         //search the table manually for the line number
         for ( z = 0; z < TABLESIZE; z++ ){
@@ -1388,9 +1388,10 @@ void secondPass(FILE *filePtr, TableEntry *table, FILE *output, char *outName){
               fscanf(temp, "%d\n", &c);
               x++;
             }
-            fprintf(output, "%d\n", c);
+            /*fprintf(output, "%d\n", c);
             printf("c is now %d\n", c);
-            fprintf(output, "%d\n", -999999);   //this is simpletrons EOF signal value
+            fpintf(output, "%d\n", -999999);   //this is simpletrons EOF signal value
+            */
             //delete the temp file
             fclose(temp);
         }else{

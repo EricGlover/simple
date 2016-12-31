@@ -1,0 +1,7 @@
+1 rem   input 3 ints, determine their average and print
+2 input a
+3 input b
+4 input c
+5 let z = ( a + b + c ) / 3
+6 print z
+7 end

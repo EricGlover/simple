@@ -1,0 +1,14 @@
+1 rem
+2 rem 3stufff and things dank memes ahoy 
+3 input x
+4 print x
+5 print y
+6 input y
+7 input z
+8 rem blah dank meme 
+9 goto 12
+10 end  
+11 input x
+12 input y rem change this back laterzzzz
+13 goto 10
+20 let a = 1 + a
