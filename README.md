@@ -14,10 +14,15 @@ Also note that it's currently unpolished, I'm still working on expanding it's fe
 In this example addProg.simple.txt is a program to add to ints together, so in your terminal / command prompt you see tons of printf statements being output (sorry about that), then it'll ask you for a number - enter something, and do the same for the next prompt. Then it prints the execution steps
 
 loading
+
 adding
+
 storing
+
 loading
+
 storing
+
 
 Then it'll spit out the answer
 
@@ -31,9 +36,13 @@ $ [your executable] [the program written in simple you wish to run] [a file that
 
 ##### Simple Programs included in this repo that you can run 
 ex1.simple.txt - ex5.simple.txt
+
 ex7.simple.txt
+
 addProg.simple.txt
+
 modtest.simple.txt
+
 modulus.simple.txt
 
 ##### Write your own programs in Simple!
