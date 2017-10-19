@@ -27,7 +27,7 @@ After that it prints out the registers and the memory.
 
 The syntax for the run command is thus:
 
-$ <your executable> <the program written in simple you wish to run> <a file that simpletron will write the 'machine code' into> <an option flag>
+$ [your executable] [the program written in simple you wish to run] [a file that simpletron will write the 'machine code' into] [an option flag]
 
 ##### Simple Programs included in this repo that you can run 
 ex1.simple.txt - ex5.simple.txt
